@@ -50,6 +50,13 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
+1) train
 Python train.py
+
+2) test
+..
+
+3) predict
+Python predict.py --image=test/0016E5_08129.png --checkpoint_path=checkpoints/0055/model.ckpt --model='FC-DenseNet56'
 ```
 
