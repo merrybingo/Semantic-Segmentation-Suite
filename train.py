@@ -1,23 +1,27 @@
-from __future__ import print_function
-import os,time,cv2, sys, math
-import tensorflow as tf
-import tensorflow.contrib.slim as slim
-import numpy as np
-import time, datetime
-import argparse
-import random
-import os, sys
-import subprocess
+#!/usr/bin/env python3
 
+from __future__ import print_function
+
+import argparse
+import datetime
+import os
+import random
+import time
+
+import cv2
 # use 'Agg' on matplotlib so that plots could be generated even without Xserver
 # running
 import matplotlib
+import numpy as np
+import tensorflow as tf
+
 matplotlib.use('Agg')
 
 from utils import utils, helpers
 from builders import model_builder
 
 import matplotlib.pyplot as plt
+
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -26,6 +30,23 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
+def print_n_write(f, str):
+    print(str)
+    f.write(str + '\n')
+
+
+start_time = time.time()
+log_path = 'log.txt'
+
+if os.path.exists(log_path):
+    os.remove(log_path)
+
+f = open(log_path, 'a+')
+print_n_write(f, '---start---')
+print_n_write(f, datetime.datetime.today().strftime('%Y-%m-%d, %H-%M-%S'))
+print_n_write(f, '')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--num_epochs', type=int, default=300, help='Number of epochs to train for')
@@ -43,8 +64,10 @@ parser.add_argument('--h_flip', type=str2bool, default=False, help='Whether to r
 parser.add_argument('--v_flip', type=str2bool, default=False, help='Whether to randomly flip the image vertically for data augmentation')
 parser.add_argument('--brightness', type=float, default=None, help='Whether to randomly change the image brightness for data augmentation. Specifies the max bightness change as a factor between 0.0 and 1.0. For example, 0.1 represents a max brightness change of 10%% (+-).')
 parser.add_argument('--rotation', type=float, default=None, help='Whether to randomly rotate the image for data augmentation. Specifies the max rotation angle in degrees.')
-parser.add_argument('--model', type=str, default="FC-DenseNet56", help='The model you are using. See model_builder.py for supported models')
-parser.add_argument('--frontend', type=str, default="ResNet101", help='The frontend you are using. See frontend_builder.py for supported models')
+# parser.add_argument('--model', type=str, default="FC-DenseNet56", help='The model you are using. See model_builder.py for supported models')
+parser.add_argument('--model', type=str, default="DeepLabV3_plus", help='The model you are using. See model_builder.py for supported models')
+# parser.add_argument('--frontend', type=str, default="ResNet101", help='The frontend you are using. See frontend_builder.py for supported models')
+parser.add_argument('--frontend', type=str, default="ResNet50", help='The frontend you are using. See frontend_builder.py for supported models')
 args = parser.parse_args()
 
 
@@ -111,30 +134,30 @@ if init_fn is not None:
 # Load a previous checkpoint if desired
 model_checkpoint_name = "checkpoints/latest_model_" + args.model + "_" + args.dataset + ".ckpt"
 if args.continue_training:
-    print('Loaded latest model checkpoint')
+    print_n_write(f, 'Loaded latest model checkpoint')
     saver.restore(sess, model_checkpoint_name)
 
 # Load the data
-print("Loading the data ...")
+print_n_write(f, "Loading the data ...")
 train_input_names,train_output_names, val_input_names, val_output_names, test_input_names, test_output_names = utils.prepare_data(dataset_dir=args.dataset)
 
 
 
-print("\n***** Begin training *****")
-print("Dataset -->", args.dataset)
-print("Model -->", args.model)
-print("Crop Height -->", args.crop_height)
-print("Crop Width -->", args.crop_width)
-print("Num Epochs -->", args.num_epochs)
-print("Batch Size -->", args.batch_size)
-print("Num Classes -->", num_classes)
+print_n_write(f, "\n***** Begin training *****")
+print_n_write(f, "Dataset -->{}".format(args.dataset))
+print_n_write(f, "Model -->{}".format(args.model))
+print_n_write(f, "Crop Height -->{}".format(args.crop_height))
+print_n_write(f, "Crop Width -->{}".format(args.crop_width))
+print_n_write(f, "Num Epochs -->{}".format(args.num_epochs))
+print_n_write(f, "Batch Size -->{}".format(args.batch_size))
+print_n_write(f, "Num Classes -->{}".format(num_classes))
 
-print("Data Augmentation:")
-print("\tVertical Flip -->", args.v_flip)
-print("\tHorizontal Flip -->", args.h_flip)
-print("\tBrightness Alteration -->", args.brightness)
-print("\tRotation -->", args.rotation)
-print("")
+print_n_write(f, "Data Augmentation:")
+print_n_write(f, "\tVertical Flip -->{}".format(args.v_flip))
+print_n_write(f, "\tHorizontal Flip -->{}".format(args.h_flip))
+print_n_write(f, "\tBrightness Alteration -->{}".format(args.brightness))
+print_n_write(f, "\tRotation -->{}".format(args.rotation))
+print_n_write(f, "")
 
 avg_loss_per_epoch = []
 avg_scores_per_epoch = []
@@ -210,16 +233,16 @@ for epoch in range(args.epoch_start_i, args.num_epochs):
         os.makedirs("%s/%04d"%("checkpoints",epoch))
 
     # Save latest checkpoint to same file name
-    print("Saving latest checkpoint")
+    print_n_write(f, "Saving latest checkpoint")
     saver.save(sess,model_checkpoint_name)
 
     if val_indices != 0 and epoch % args.checkpoint_step == 0:
-        print("Saving checkpoint for this epoch")
+        print_n_write(f, "Saving checkpoint for this epoch")
         saver.save(sess,"%s/%04d/model.ckpt"%("checkpoints",epoch))
 
 
     if epoch % args.validation_step == 0:
-        print("Performing validation")
+        print_n_write(f, "Performing validation")
         target=open("%s/%04d/val_scores.csv"%("checkpoints",epoch),'w')
         target.write("val_name, avg_accuracy, precision, recall, f1 score, mean iou, %s\n" % (class_names_string))
 
@@ -282,14 +305,14 @@ for epoch in range(args.epoch_start_i, args.num_epochs):
         avg_iou = np.mean(iou_list)
         avg_iou_per_epoch.append(avg_iou)
 
-        print("\nAverage validation accuracy for epoch # %04d = %f"% (epoch, avg_score))
-        print("Average per class validation accuracies for epoch # %04d:"% (epoch))
+        print_n_write(f, "\nAverage validation accuracy for epoch # %04d = %f"% (epoch, avg_score))
+        print_n_write(f, "Average per class validation accuracies for epoch # %04d:"% (epoch))
         for index, item in enumerate(class_avg_scores):
-            print("%s = %f" % (class_names_list[index], item))
-        print("Validation precision = ", avg_precision)
-        print("Validation recall = ", avg_recall)
-        print("Validation F1 score = ", avg_f1)
-        print("Validation IoU score = ", avg_iou)
+            print_n_write(f, "%s = %f" % (class_names_list[index], item))
+        print_n_write(f, "Validation precision = {}".format(avg_precision))
+        print_n_write(f, "Validation recall = {}".format(avg_recall))
+        print_n_write(f, "Validation F1 score = {}".format(avg_f1))
+        print_n_write(f, "Validation IoU score = {}".format(avg_iou))
 
     epoch_time=time.time()-epoch_st
     remain_time=epoch_time*(args.num_epochs-1-epoch)
@@ -336,4 +359,8 @@ for epoch in range(args.epoch_start_i, args.num_epochs):
     plt.savefig('iou_vs_epochs.png')
 
 
+e = int(time.time() - start_time)
+print_n_write(f, '---end---')
+print_n_write(f, datetime.datetime.today().strftime('%Y-%m-%d, %H-%M-%S'))
+print_n_write(f, '{:02d}:{:02d}:{:02d}'.format(e // 3600, (e % 3600 // 60), e % 60))
 
