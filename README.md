@@ -51,12 +51,12 @@ pip install -r requirements.txt
 
 ```bash
 1) train
-Python train.py
+python train.py --dataset='Mapillary' --model='DeepLabV3_plus' --frontend='ResNet50'
 
 2) test
 ..
 
 3) predict
-Python predict.py --image=test/0016E5_08129.png --checkpoint_path=checkpoints/0055/model.ckpt --model='FC-DenseNet56'
+python predict.py --image=test.png --checkpoint_path=checkpoints/latest_model_DeepLabV3_plus_Mapillary.ckpt --model='DeepLabV3_plus' --dataset='Mapillary'
 ```
 
